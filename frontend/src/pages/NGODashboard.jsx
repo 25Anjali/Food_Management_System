@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -51,46 +51,21 @@ export default function NGODashboard() {
   const [myDonations, setMyDonations] = useState([]);
   const [locationFilter, setLocationFilter] = useState('');
   const [view, setView] = useState('list'); // 'list', 'map', 'active'
-  const [userLocation, setUserLocation] = useState({ lat: 12.9716, lng: 77.5946 }); // Default to Bengaluru
+  const [userLocation, setUserLocation] = useState(null); // Changed from default to null
+  const [loading, setLoading] = useState(true);
   const [selectedDonation, setSelectedDonation] = useState(null);
-  const [costAgreements, setCostAgreements] = useState({}); // Moved hook out of loop
+  const [costAgreements, setCostAgreements] = useState({});
   const [optimizedRoute, setOptimizedRoute] = useState([]);
+
+  const activeFetchRef = useRef(null);
 
   const toggleCostAgreement = (id) => {
     setCostAgreements(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // Nearest Neighbor TSP Heuristic
-  const calculateOptimizedRoute = () => {
-    if (myDonations.length === 0) return;
-
-    let unvisited = [...myDonations];
-    let route = [];
-    let currentPos = userLocation;
-
-    while (unvisited.length > 0) {
-      let closestIdx = 0;
-      let minDistance = Infinity;
-
-      unvisited.forEach((d, index) => {
-        const dist = Math.sqrt(Math.pow(d.latitude - currentPos.lat, 2) + Math.pow(d.longitude - currentPos.lng, 2));
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestIdx = index;
-        }
-      });
-
-      const next = unvisited.splice(closestIdx, 1)[0];
-      route.push(next);
-      currentPos = { lat: next.latitude, lng: next.longitude };
-    }
-    setOptimizedRoute(route);
-  };
-
-
-  const fetchAvailableDonations = async () => {
+  const fetchAvailableDonations = async (signal) => {
     try {
-      console.log('Fetching available donations with:', { locationFilter, userLocation });
+      console.log('Fetching available donations for:', { locationFilter, userLocation });
       let url = `${API_BASE_URL}/donations`;
       const params = new URLSearchParams();
       if (locationFilter) params.append('location', locationFilter);
@@ -98,11 +73,18 @@ export default function NGODashboard() {
         params.append('lat', userLocation.lat);
         params.append('lng', userLocation.lng);
       }
-      const { data } = await axios.get(`${url}?${params.toString()}`);
+      
+      const { data } = await axios.get(`${url}?${params.toString()}`, { signal });
       console.log('Available donations fetched:', data);
       setDonations(data);
     } catch (err) {
-      console.error('Error fetching available donations:', err);
+      if (axios.isCancel(err)) {
+        console.log('Fetch cancelled');
+      } else {
+        console.error('Error fetching available donations:', err);
+      }
+    } finally {
+      if (!signal.aborted) setLoading(false);
     }
   };
 
@@ -119,13 +101,17 @@ export default function NGODashboard() {
 
   useEffect(() => {
     fetchMyDonations();
-  }, []); // Fetch my missions once on mount
+  }, []);
 
   useEffect(() => {
-    if (userLocation) {
-      fetchAvailableDonations();
-    }
-  }, [locationFilter, userLocation]); // Only fetch when location is available
+    if (!userLocation) return; // Wait for location
+
+    const controller = new AbortController();
+    setLoading(true);
+    fetchAvailableDonations(controller.signal);
+
+    return () => controller.abort();
+  }, [locationFilter, userLocation]);
 
   useEffect(() => {
     // Priority: 1. Registered location, 2. Browser geolocation, 3. Default Bengaluru
@@ -139,8 +125,8 @@ export default function NGODashboard() {
           setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
         (err) => {
-          console.log('Location access denied, staying with default Bengaluru');
-          // userLocation already defaults to Bengaluru, so no change needed
+          console.log('Location access denied, falling back to Bengaluru coordinates');
+          setUserLocation({ lat: 12.9716, lng: 77.5946 });
         }
       );
     }
@@ -296,12 +282,17 @@ export default function NGODashboard() {
             </div>
           </div>
 
-          {donations.length === 0 && (
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '4rem 0' }}>
+              <div className="spinner-border text-primary" role="status"></div>
+              <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>Searching for donations...</p>
+            </div>
+          ) : donations.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
               <MapPin size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-              <p style={{ fontSize: '1.1rem' }}>No donations currently available.</p>
+              <p style={{ fontSize: '1.1rem' }}>No donations currently available in this area.</p>
             </div>
-          )}
+          ) : null}
         </div>
       )}
 
