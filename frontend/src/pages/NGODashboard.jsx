@@ -90,6 +90,7 @@ export default function NGODashboard() {
 
   const fetchAvailableDonations = async () => {
     try {
+      console.log('Fetching available donations with:', { locationFilter, userLocation });
       let url = `${API_BASE_URL}/donations`;
       const params = new URLSearchParams();
       if (locationFilter) params.append('location', locationFilter);
@@ -98,34 +99,49 @@ export default function NGODashboard() {
         params.append('lng', userLocation.lng);
       }
       const { data } = await axios.get(`${url}?${params.toString()}`);
+      console.log('Available donations fetched:', data);
       setDonations(data);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching available donations:', err);
     }
   };
 
   const fetchMyDonations = async () => {
     try {
+      console.log('Fetching my donations...');
       const { data } = await axios.get(`${API_BASE_URL}/donations/my`);
+      console.log('My donations fetched:', data);
       setMyDonations(data);
     } catch (err) {
-      console.error(err);
+      console.error('Error fetching my donations:', err);
     }
   };
 
   useEffect(() => {
-    fetchAvailableDonations();
     fetchMyDonations();
-  }, [locationFilter, userLocation]);
+  }, []); // Fetch my missions once on mount
+
+  useEffect(() => {
+    if (userLocation) {
+      fetchAvailableDonations();
+    }
+  }, [locationFilter, userLocation]); // Only fetch when location is available
 
   useEffect(() => {
     // Priority: 1. Registered location, 2. Browser geolocation, 3. Default Bengaluru
     if (user?.latitude && user?.longitude) {
+      console.log('Setting user location from profile:', { lat: user.latitude, lng: user.longitude });
       setUserLocation({ lat: user.latitude, lng: user.longitude });
     } else {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => console.log('Location access denied')
+        (pos) => {
+          console.log('Setting user location from browser:', { lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        (err) => {
+          console.log('Location access denied, staying with default Bengaluru');
+          // userLocation already defaults to Bengaluru, so no change needed
+        }
       );
     }
   }, [user]);
