@@ -51,16 +51,38 @@ export default function NGODashboard() {
   const [myDonations, setMyDonations] = useState([]);
   const [locationFilter, setLocationFilter] = useState('');
   const [view, setView] = useState('list'); // 'list', 'map', 'active'
-  const [userLocation, setUserLocation] = useState(null); // Changed from default to null
-  const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [selectedDonation, setSelectedDonation] = useState(null);
   const [costAgreements, setCostAgreements] = useState({});
   const [optimizedRoute, setOptimizedRoute] = useState([]);
 
-  const activeFetchRef = useRef(null);
+  const isLocationSet = useRef(false);
 
   const toggleCostAgreement = (id) => {
     setCostAgreements(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const calculateOptimizedRoute = () => {
+    if (myDonations.length === 0) return;
+    let unvisited = [...myDonations];
+    let route = [];
+    let currentPos = userLocation || { lat: 12.9716, lng: 77.5946 };
+    while (unvisited.length > 0) {
+      let closestIdx = 0;
+      let minDistance = Infinity;
+      unvisited.forEach((d, index) => {
+        const dist = Math.sqrt(Math.pow(d.latitude - currentPos.lat, 2) + Math.pow(d.longitude - currentPos.lng, 2));
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestIdx = index;
+        }
+      });
+      const next = unvisited.splice(closestIdx, 1)[0];
+      route.push(next);
+      currentPos = { lat: next.latitude, lng: next.longitude };
+    }
+    setOptimizedRoute(route);
   };
 
   const fetchAvailableDonations = async (signal) => {
@@ -78,21 +100,17 @@ export default function NGODashboard() {
       console.log('Available donations fetched:', data);
       setDonations(data);
     } catch (err) {
-      if (axios.isCancel(err)) {
-        console.log('Fetch cancelled');
-      } else {
+      if (!axios.isCancel(err)) {
         console.error('Error fetching available donations:', err);
       }
     } finally {
-      if (!signal.aborted) setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   };
 
   const fetchMyDonations = async () => {
     try {
-      console.log('Fetching my donations...');
       const { data } = await axios.get(`${API_BASE_URL}/donations/my`);
-      console.log('My donations fetched:', data);
       setMyDonations(data);
     } catch (err) {
       console.error('Error fetching my donations:', err);
@@ -104,29 +122,36 @@ export default function NGODashboard() {
   }, []);
 
   useEffect(() => {
-    if (!userLocation) return; // Wait for location
-
+    if (!userLocation) return;
     const controller = new AbortController();
-    setLoading(true);
+    // Only show full loading if we have no donations yet
+    if (donations.length === 0) setLoading(true);
     fetchAvailableDonations(controller.signal);
-
     return () => controller.abort();
-  }, [locationFilter, userLocation]);
+  }, [locationFilter, userLocation?.lat, userLocation?.lng]); // Use coordinate values directly
 
   useEffect(() => {
-    // Priority: 1. Registered location, 2. Browser geolocation, 3. Default Bengaluru
+    if (isLocationSet.current) return;
+
     if (user?.latitude && user?.longitude) {
-      console.log('Setting user location from profile:', { lat: user.latitude, lng: user.longitude });
+      console.log('Set location from profile');
       setUserLocation({ lat: user.latitude, lng: user.longitude });
+      isLocationSet.current = true;
     } else {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          console.log('Setting user location from browser:', { lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          if (!isLocationSet.current) {
+            console.log('Set location from browser');
+            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            isLocationSet.current = true;
+          }
         },
         (err) => {
-          console.log('Location access denied, falling back to Bengaluru coordinates');
-          setUserLocation({ lat: 12.9716, lng: 77.5946 });
+          if (!isLocationSet.current) {
+            console.log('Falling back to default location');
+            setUserLocation({ lat: 12.9716, lng: 77.5946 });
+            isLocationSet.current = true;
+          }
         }
       );
     }
