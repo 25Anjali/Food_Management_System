@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { User, Phone, Navigation, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
+import API_BASE_URL from '../api/config';
 
 export default function CollectorSelector({ donation, onAssign }) {
   const [collectors, setCollectors] = useState([]);
@@ -13,7 +14,7 @@ export default function CollectorSelector({ donation, onAssign }) {
   useEffect(() => {
     const fetchCollectors = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/donations/collectors/near?lat=${donation.latitude}&lng=${donation.longitude}&radius=10000`);
+        const { data } = await axios.get(`${API_BASE_URL}/donations/collectors/near?lat=${donation.latitude}&lng=${donation.longitude}&radius=10000`);
         setCollectors(data);
       } catch (err) {
         console.error('Error fetching collectors', err);
@@ -26,7 +27,7 @@ export default function CollectorSelector({ donation, onAssign }) {
 
   const handleAssign = async (collectorId) => {
     try {
-      await axios.put(`http://localhost:5000/api/donations/${donation._id}/assign`, { collectorId });
+      await axios.put(`${API_BASE_URL}/donations/${donation._id}/assign`, { collectorId });
       onAssign();
     } catch (err) {
       alert('Error assigning collector');

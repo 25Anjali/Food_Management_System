@@ -5,6 +5,7 @@ import { AuthContext } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import Chat from '../components/Chat';
 import CollectorSelector from '../components/CollectorSelector';
+import API_BASE_URL from '../api/config';
 
 export default function DonorDashboard() {
   const { user } = useContext(AuthContext);
@@ -24,7 +25,7 @@ export default function DonorDashboard() {
 
   const fetchDonations = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/donations/my');
+      const { data } = await axios.get(`${API_BASE_URL}/donations/my`);
       setDonations(data);
     } catch (err) {
       console.error(err);
@@ -39,7 +40,7 @@ export default function DonorDashboard() {
 
   const confirmCollector = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/api/donations/${id}/confirm`);
+      await axios.put(`${API_BASE_URL}/donations/${id}/confirm`);
       alert('Collector confirmed! Pickup is now officially scheduled.');
       fetchDonations();
     } catch (err) {
@@ -50,7 +51,7 @@ export default function DonorDashboard() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/donations', {
+      await axios.post(`${API_BASE_URL}/donations`, {
         ...formData,
         latitude: parseFloat(formData.latitude),
         longitude: parseFloat(formData.longitude),

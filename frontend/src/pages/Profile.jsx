@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { User, Phone, MapPin, Building, Calendar, ArrowLeft, Shield, Globe } from 'lucide-react';
+import API_BASE_URL from '../api/config';
 
 export default function Profile() {
   const { id } = useParams();
@@ -12,7 +13,7 @@ export default function Profile() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const { data } = await axios.get(`http://localhost:5000/api/auth/user/${id}`);
+        const { data } = await axios.get(`${API_BASE_URL}/auth/user/${id}`);
         setProfile(data);
         setLoading(false);
       } catch (err) {

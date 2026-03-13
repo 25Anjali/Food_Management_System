@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Users, ShoppingBag, Truck, CheckCircle, BarChart3, Mail } from 'lucide-react';
+import API_BASE_URL from '../api/config';
 
 export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState(null);
@@ -14,9 +15,9 @@ export default function AdminDashboard() {
     const fetchData = async () => {
       try {
         const [aRes, uRes, dRes] = await Promise.all([
-          axios.get('http://localhost:5000/api/admin/analytics'),
-          axios.get('http://localhost:5000/api/admin/users'),
-          axios.get('http://localhost:5000/api/admin/donations')
+          axios.get(`${API_BASE_URL}/admin/analytics`),
+          axios.get(`${API_BASE_URL}/admin/users`),
+          axios.get(`${API_BASE_URL}/admin/donations`)
         ]);
         setAnalytics(aRes.data);
         setUsers(uRes.data);

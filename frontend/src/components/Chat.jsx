@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Send, User as UserIcon, MessageSquare } from 'lucide-react';
+import API_BASE_URL from '../api/config';
 
 export default function Chat({ donationId, currentUser }) {
   const [messages, setMessages] = useState([]);
@@ -10,7 +11,7 @@ export default function Chat({ donationId, currentUser }) {
 
   const fetchMessages = async () => {
     try {
-      const { data } = await axios.get(`http://localhost:5000/api/messages/${donationId}`);
+      const { data } = await axios.get(`${API_BASE_URL}/messages/${donationId}`);
       setMessages(data);
       setLoading(false);
     } catch (err) {
@@ -33,7 +34,7 @@ export default function Chat({ donationId, currentUser }) {
     if (!newMessage.trim()) return;
 
     try {
-      await axios.post('http://localhost:5000/api/messages', {
+      await axios.post(`${API_BASE_URL}/messages`, {
         donationId,
         content: newMessage
       });

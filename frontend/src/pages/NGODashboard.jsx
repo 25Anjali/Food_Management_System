@@ -7,6 +7,7 @@ import L from 'leaflet';
 import Chat from '../components/Chat';
 import { AuthContext } from '../context/AuthContext';
 import { useContext } from 'react';
+import API_BASE_URL from '../api/config';
 
 // Fix for default marker icon in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -89,7 +90,7 @@ export default function NGODashboard() {
 
   const fetchAvailableDonations = async () => {
     try {
-      let url = 'http://localhost:5000/api/donations';
+      let url = `${API_BASE_URL}/donations`;
       const params = new URLSearchParams();
       if (locationFilter) params.append('location', locationFilter);
       if (userLocation) {
@@ -105,7 +106,7 @@ export default function NGODashboard() {
 
   const fetchMyDonations = async () => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/donations/my');
+      const { data } = await axios.get(`${API_BASE_URL}/donations/my`);
       setMyDonations(data);
     } catch (err) {
       console.error(err);
@@ -131,7 +132,7 @@ export default function NGODashboard() {
 
   const acceptDonation = async (id, isCostAgreed) => {
     try {
-      await axios.put(`http://localhost:5000/api/donations/${id}/accept`, { isCostAgreed });
+      await axios.put(`${API_BASE_URL}/donations/${id}/accept`, { isCostAgreed });
       alert('Donation accepted! Now wait for donor confirmation.');
       fetchAvailableDonations();
       fetchMyDonations();
@@ -143,7 +144,7 @@ export default function NGODashboard() {
 
   const rejectDonation = async (id) => {
     try {
-      await axios.put(`http://localhost:5000/api/donations/${id}/reject`);
+      await axios.put(`${API_BASE_URL}/donations/${id}/reject`);
       alert('Request rejected.');
       fetchAvailableDonations();
       fetchMyDonations();
@@ -154,7 +155,7 @@ export default function NGODashboard() {
 
   const updateStatus = async (id, status) => {
     try {
-      await axios.put(`http://localhost:5000/api/donations/${id}/status`, { status });
+      await axios.put(`${API_BASE_URL}/donations/${id}/status`, { status });
       fetchMyDonations();
     } catch (err) {
       alert('Error updating status');
