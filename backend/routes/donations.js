@@ -35,7 +35,7 @@ router.get('/', async (req, res) => {
     if (location) {
       query.location = { $regex: location, $options: 'i' };
     } else if (lat && lng) {
-      const radiusInKm = radius ? parseFloat(radius) : 10;
+      const radiusInKm = radius ? parseFloat(radius) : 100; // Increased default to 100km
       const degPerKm = 1 / 111;
       query.latitude = { $gte: parseFloat(lat) - radiusInKm * degPerKm, $lte: parseFloat(lat) + radiusInKm * degPerKm };
       query.longitude = { $gte: parseFloat(lng) - radiusInKm * degPerKm, $lte: parseFloat(lng) + radiusInKm * degPerKm };

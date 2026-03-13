@@ -57,8 +57,6 @@ export default function NGODashboard() {
   const [costAgreements, setCostAgreements] = useState({});
   const [optimizedRoute, setOptimizedRoute] = useState([]);
 
-  const isLocationSet = useRef(false);
-
   const toggleCostAgreement = (id) => {
     setCostAgreements(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -131,31 +129,24 @@ export default function NGODashboard() {
   }, [locationFilter, userLocation?.lat, userLocation?.lng]); // Use coordinate values directly
 
   useEffect(() => {
-    if (isLocationSet.current) return;
-
+    // If profile has data, use it immediately
     if (user?.latitude && user?.longitude) {
-      console.log('Set location from profile');
+      console.log('NGODashboard: Using profile location');
       setUserLocation({ lat: user.latitude, lng: user.longitude });
-      isLocationSet.current = true;
     } else {
+      // Otherwise fallback to browser geolocation
+      console.log('NGODashboard: Profile location missing, trying browser...');
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          if (!isLocationSet.current) {
-            console.log('Set location from browser');
-            setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-            isLocationSet.current = true;
-          }
+          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         },
         (err) => {
-          if (!isLocationSet.current) {
-            console.log('Falling back to default location');
-            setUserLocation({ lat: 12.9716, lng: 77.5946 });
-            isLocationSet.current = true;
-          }
+          console.log('NGODashboard: Falling back to default Bengaluru');
+          setUserLocation({ lat: 12.9716, lng: 77.5946 });
         }
       );
     }
-  }, [user]);
+  }, [user?.latitude, user?.longitude]);
 
   const acceptDonation = async (id, isCostAgreed) => {
     try {
@@ -315,7 +306,8 @@ export default function NGODashboard() {
           ) : donations.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
               <MapPin size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-              <p style={{ fontSize: '1.1rem' }}>No donations currently available in this area.</p>
+              <p style={{ fontSize: '1.1rem' }}>No donations available within 100km.</p>
+              <p style={{ fontSize: '0.9rem' }}>Try searching by area or city name above.</p>
             </div>
           ) : null}
         </div>
