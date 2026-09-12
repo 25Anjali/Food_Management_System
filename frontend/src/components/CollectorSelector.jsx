@@ -108,7 +108,7 @@ export default function CollectorSelector({ donation, onAssign }) {
               <Popup>Your Pickup Spot</Popup>
             </Marker>
 
-            {collectors.map(c => (
+            {collectors.filter(c => c.latitude != null && c.longitude != null).map(c => (
               <Marker key={c._id} position={[c.latitude, c.longitude]} icon={L.icon({
                 iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
                 shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
