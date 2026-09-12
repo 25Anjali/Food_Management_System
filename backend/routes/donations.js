@@ -1,10 +1,27 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 import { protect, donorMode } from '../middleware/auth.js';
 import Donation from '../models/Donation.js';
 import User from '../models/User.js';
 
 const router = express.Router();
+
+// Convert a typed area/address into real coordinates using OpenStreetMap's free geocoder
+async function geocodeArea(query) {
+  try {
+    const { data } = await axios.get('https://nominatim.openstreetmap.org/search', {
+      params: { q: query, format: 'json', limit: 1 },
+      headers: { 'User-Agent': 'EcoEats-FoodDonationApp/1.0' }
+    });
+    if (data && data.length > 0) {
+      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+    }
+  } catch (err) {
+    console.error('Geocoding error:', err.message);
+  }
+  return null;
+}
 
 // Get all available donations (with optional awareness of requested donations)
 router.get('/', async (req, res) => {
@@ -32,11 +49,21 @@ router.get('/', async (req, res) => {
       query.$or.push({ status: 'requested', collector: userId });
     }
 
+    // Default search radius: 15km (realistic for in-city pickup, not 100km)
+    const radiusInKm = radius ? parseFloat(radius) : 15;
+    const degPerKm = 1 / 111;
+
     if (location) {
-      query.location = { $regex: location, $options: 'i' };
+      // Typed an area name: convert it to real coordinates, then search nearby.
+      const geo = await geocodeArea(location);
+      if (geo) {
+        query.latitude = { $gte: geo.lat - radiusInKm * degPerKm, $lte: geo.lat + radiusInKm * degPerKm };
+        query.longitude = { $gte: geo.lng - radiusInKm * degPerKm, $lte: geo.lng + radiusInKm * degPerKm };
+      } else {
+        // Geocoding failed (e.g. typo/unrecognized place) — fall back to text match
+        query.location = { $regex: location, $options: 'i' };
+      }
     } else if (lat && lng) {
-      const radiusInKm = radius ? parseFloat(radius) : 100; // Increased default to 100km
-      const degPerKm = 1 / 111;
       query.latitude = { $gte: parseFloat(lat) - radiusInKm * degPerKm, $lte: parseFloat(lat) + radiusInKm * degPerKm };
       query.longitude = { $gte: parseFloat(lng) - radiusInKm * degPerKm, $lte: parseFloat(lng) + radiusInKm * degPerKm };
     }
