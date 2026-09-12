@@ -36,7 +36,34 @@ export default function DonorDashboard() {
     fetchDonations();
   }, []);
 
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeStatus, setGeocodeStatus] = useState(''); // '', 'found', 'not-found'
+
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  // Auto-convert the typed address into real coordinates when the donor leaves the field
+  const geocodeAddress = async () => {
+    if (!formData.location || formData.location.trim().length < 3) return;
+    setGeocoding(true);
+    setGeocodeStatus('');
+    try {
+      const { data } = await axios.get('https://nominatim.openstreetmap.org/search', {
+        params: { q: formData.location, format: 'json', limit: 1 },
+        headers: { 'Accept-Language': 'en' }
+      });
+      if (data && data.length > 0) {
+        setFormData((prev) => ({ ...prev, latitude: data[0].lat, longitude: data[0].lon }));
+        setGeocodeStatus('found');
+      } else {
+        setGeocodeStatus('not-found');
+      }
+    } catch (err) {
+      console.error('Geocoding failed:', err);
+      setGeocodeStatus('not-found');
+    } finally {
+      setGeocoding(false);
+    }
+  };
 
   const confirmCollector = async (id) => {
     try {
@@ -119,16 +146,28 @@ export default function DonorDashboard() {
               <label className="form-label">Preparation Time</label>
               <input type="text" name="preparationTime" className="form-control" value={formData.preparationTime} onChange={handleChange} />
             </div>
-            <div className="form-group">
+            <div className="form-group" style={{ gridColumn: '1 / -1' }}>
               <label className="form-label">Pickup Location Address</label>
-              <input type="text" name="location" className="form-control" required value={formData.location} onChange={handleChange} />
+              <input
+                type="text"
+                name="location"
+                className="form-control"
+                placeholder="e.g. 80 Feet Rd, Koramangala 4th Block, Bengaluru"
+                required
+                value={formData.location}
+                onChange={handleChange}
+                onBlur={geocodeAddress}
+              />
+              {geocoding && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '4px' }}>Locating address...</p>}
+              {geocodeStatus === 'found' && <p style={{ fontSize: '0.8rem', color: 'green', marginTop: '4px' }}>✓ Location found on map</p>}
+              {geocodeStatus === 'not-found' && <p style={{ fontSize: '0.8rem', color: '#DC2626', marginTop: '4px' }}>Couldn't find that address — try adding more detail (area, city), or fill coordinates manually below.</p>}
             </div>
             <div className="form-group">
-              <label className="form-label">Latitude</label>
+              <label className="form-label">Latitude {geocodeStatus === 'found' && <span style={{ fontSize: '0.75rem', color: 'green' }}>(auto-filled)</span>}</label>
               <input type="number" step="any" name="latitude" className="form-control" required value={formData.latitude} onChange={handleChange} />
             </div>
             <div className="form-group">
-              <label className="form-label">Longitude</label>
+              <label className="form-label">Longitude {geocodeStatus === 'found' && <span style={{ fontSize: '0.75rem', color: 'green' }}>(auto-filled)</span>}</label>
               <input type="number" step="any" name="longitude" className="form-control" required value={formData.longitude} onChange={handleChange} />
             </div>
             <div className="form-group">
